@@ -104,7 +104,7 @@ bool LoadBuzzMappings(const char *dev_type, int port, const std::string& joyname
 
 	if (joyname.empty())
 		return false;
-
+buzz_map_names
 	int j = 0;
 
 	cfg.controls.resize(countof(buzz_map_names) * 4);

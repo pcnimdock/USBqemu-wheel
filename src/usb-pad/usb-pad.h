@@ -74,21 +74,42 @@ public:
 class SeamicDevice
 {
 public:
-	virtual ~SeamicDevice() { }
-	static USBDevice* CreateDevice(int port);
-	static const TCHAR* Name()
-	{
-		return TEXT("Sega Seamic");
-	}
-	static const char* TypeName()
-	{
-		return "seamic";
-	}
-	static std::list<std::string> ListAPIs();
-	static const TCHAR* LongAPIName(const std::string& name);
-	static int Configure(int port, const std::string& api, void *data);
-	static int Freeze(int mode, USBDevice *dev, void *data);
+    virtual ~SeamicDevice() { }
+    static USBDevice* CreateDevice(int port);
+    static const TCHAR* Name()
+    {
+        return TEXT("Sega Seamic");
+    }
+    static const char* TypeName()
+    {
+        return "seamic";
+    }
+    static std::list<std::string> ListAPIs();
+    static const TCHAR* LongAPIName(const std::string& name);
+    static int Configure(int port, const std::string& api, void *data);
+    static int Freeze(int mode, USBDevice *dev, void *data);
 };
+
+class Guncon2Device
+{
+public:
+    virtual ~Guncon2Device() {}
+    static USBDevice* CreateDevice(int port);
+    static const TCHAR* Name()
+    {
+        return TEXT("Guncon2 Device");
+    }
+    static const char* TypeName()
+    {
+        return "guncon2_device";
+    }
+    static std::list<std::string> ListAPIs();
+    static const TCHAR* LongAPIName(const std::string& name);
+    static int Configure(int port, const std::string& api, void* data);
+    static int Freeze(int mode, USBDevice* dev, void* data);
+    static void Initialize();
+};
+
 
 // Most likely as seen on https://github.com/matlo/GIMX
 #define CMD_DOWNLOAD			0x00
@@ -138,6 +159,7 @@ enum PS2WheelTypes {
 	WT_ROCKBAND1_DRUMKIT,
 	WT_BUZZ_CONTROLLER,
 	WT_SEGA_SEAMIC,
+    WT_GUNCON2,
 };
 
 inline int range_max(PS2WheelTypes type)
@@ -1139,98 +1161,203 @@ static const uint8_t rb1_hid_report_descriptor[] = {
 //////////
 
 static const uint8_t buzz_dev_descriptor[] = {
-	0x12,        // bLength
-	0x01,        // bDescriptorType (Device)
-	0x00, 0x02,  // bcdUSB 2.00
-	0x00,        // bDeviceClass (Use class information in the Interface Descriptors)
-	0x00,        // bDeviceSubClass
-	0x00,        // bDeviceProtocol
-	0x08,        // bMaxPacketSize0 8
-	0x4C, 0x05,  // idVendor 0x054C
-	0x02, 0x00,  // idProduct 0x0002
-	0xA1, 0x05,  // bcdDevice 11.01
-	0x03,        // iManufacturer (String Index)
-	0x01,        // iProduct (String Index)
-	0x00,        // iSerialNumber (String Index)
-	0x01,        // bNumConfigurations 1
+    0x12,        // bLength
+    0x01,        // bDescriptorType (Device)
+    0x00, 0x02,  // bcdUSB 2.00
+    0x00,        // bDeviceClass (Use class information in the Interface Descriptors)
+    0x00,        // bDeviceSubClass
+    0x00,        // bDeviceProtocol
+    0x08,        // bMaxPacketSize0 8
+    0x4C, 0x05,  // idVendor 0x054C
+    0x02, 0x00,  // idProduct 0x0002
+    0xA1, 0x05,  // bcdDevice 11.01
+    0x03,        // iManufacturer (String Index)
+    0x01,        // iProduct (String Index)
+    0x00,        // iSerialNumber (String Index)
+    0x01,        // bNumConfigurations 1
 };
 
 static const uint8_t buzz_config_descriptor[] = {
-	0x09,        // bLength
-	0x02,        // bDescriptorType (Configuration)
-	0x22, 0x00,  // wTotalLength 34
-	0x01,        // bNumInterfaces 1
-	0x01,        // bConfigurationValue
-	0x00,        // iConfiguration (String Index)
-	0x80,        // bmAttributes
-	0x32,        // bMaxPower 100mA
+    0x09,        // bLength
+    0x02,        // bDescriptorType (Configuration)
+    0x22, 0x00,  // wTotalLength 34
+    0x01,        // bNumInterfaces 1
+    0x01,        // bConfigurationValue
+    0x00,        // iConfiguration (String Index)
+    0x80,        // bmAttributes
+    0x32,        // bMaxPower 100mA
 
-	0x09,        // bLength
-	0x04,        // bDescriptorType (Interface)
-	0x00,        // bInterfaceNumber 0
-	0x00,        // bAlternateSetting
-	0x01,        // bNumEndpoints 1
-	0x03,        // bInterfaceClass
-	0x00,        // bInterfaceSubClass
-	0x00,        // bInterfaceProtocol
-	0x00,        // iInterface (String Index)
+    0x09,        // bLength
+    0x04,        // bDescriptorType (Interface)
+    0x00,        // bInterfaceNumber 0
+    0x00,        // bAlternateSetting
+    0x01,        // bNumEndpoints 1
+    0x03,        // bInterfaceClass
+    0x00,        // bInterfaceSubClass
+    0x00,        // bInterfaceProtocol
+    0x00,        // iInterface (String Index)
 
-	0x09,        // bLength
-	0x21,        // bDescriptorType (HID)
-	0x11, 0x01,  // bcdHID 1.11
-	0x33,        // bCountryCode
-	0x01,        // bNumDescriptors
-	0x22,        // bDescriptorType[0] (HID)
-	0x4E, 0x00,  // wDescriptorLength[0] 78
+    0x09,        // bLength
+    0x21,        // bDescriptorType (HID)
+    0x11, 0x01,  // bcdHID 1.11
+    0x33,        // bCountryCode
+    0x01,        // bNumDescriptors
+    0x22,        // bDescriptorType[0] (HID)
+    0x4E, 0x00,  // wDescriptorLength[0] 78
 
-	0x07,        // bLength
-	0x05,        // bDescriptorType (Endpoint)
-	0x81,        // bEndpointAddress (IN/D2H)
-	0x03,        // bmAttributes (Interrupt)
-	0x08, 0x00,  // wMaxPacketSize 8
-	0x0A,        // bInterval 10 (unit depends on device speed)
+    0x07,        // bLength
+    0x05,        // bDescriptorType (Endpoint)
+    0x81,        // bEndpointAddress (IN/D2H)
+    0x03,        // bmAttributes (Interrupt)
+    0x08, 0x00,  // wMaxPacketSize 8
+    0x0A,        // bInterval 10 (unit depends on device speed)
 };
 
 static const uint8_t buzz_hid_report_descriptor[] = {
-	0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
-	0x09, 0x04,        // Usage (Joystick)
-	0xA1, 0x01,        // Collection (Application)
-	0xA1, 0x02,        //   Collection (Logical)
-	0x75, 0x08,        //     Report Size (8)
-	0x95, 0x02,        //     Report Count (2)
-	0x15, 0x00,        //     Logical Minimum (0)
-	0x26, 0xFF, 0x00,  //     Logical Maximum (255)
-	0x35, 0x00,        //     Physical Minimum (0)
-	0x46, 0xFF, 0x00,  //     Physical Maximum (255)
-	0x09, 0x30,        //     Usage (X)
-	0x09, 0x31,        //     Usage (Y)
-	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-	0x75, 0x01,        //     Report Size (1)
-	0x95, 0x14,        //     Report Count (20)
-	0x25, 0x01,        //     Logical Maximum (1)
-	0x45, 0x01,        //     Physical Maximum (1)
-	0x05, 0x09,        //     Usage Page (Button)
-	0x19, 0x01,        //     Usage Minimum (0x01)
-	0x29, 0x14,        //     Usage Maximum (0x14)
-	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-	0x06, 0x00, 0xFF,  //     Usage Page (Vendor Defined 0xFF00)
-	0x75, 0x01,        //     Report Size (1)
-	0x95, 0x04,        //     Report Count (4)
-	0x25, 0x01,        //     Logical Maximum (1)
-	0x45, 0x01,        //     Physical Maximum (1)
-	0x09, 0x01,        //     Usage (0x01)
-	0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-	0xC0,              //   End Collection
-	0xA1, 0x02,        //   Collection (Logical)
-	0x75, 0x08,        //     Report Size (8)
-	0x95, 0x07,        //     Report Count (7)
-	0x26, 0xFF, 0x00,  //     Logical Maximum (255)
-	0x46, 0xFF, 0x00,  //     Physical Maximum (255)
-	0x09, 0x02,        //     Usage (0x02)
-	0x91, 0x02,        //     Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-	0xC0,              //   End Collection
-	0xC0,              // End Collection
-	// 78 bytes
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x04,        // Usage (Joystick)
+    0xA1, 0x01,        // Collection (Application)
+    0xA1, 0x02,        //   Collection (Logical)
+    0x75, 0x08,        //     Report Size (8)
+    0x95, 0x02,        //     Report Count (2)
+    0x15, 0x00,        //     Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //     Logical Maximum (255)
+    0x35, 0x00,        //     Physical Minimum (0)
+    0x46, 0xFF, 0x00,  //     Physical Maximum (255)
+    0x09, 0x30,        //     Usage (X)
+    0x09, 0x31,        //     Usage (Y)
+    0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x01,        //     Report Size (1)
+    0x95, 0x14,        //     Report Count (20)
+    0x25, 0x01,        //     Logical Maximum (1)
+    0x45, 0x01,        //     Physical Maximum (1)
+    0x05, 0x09,        //     Usage Page (Button)
+    0x19, 0x01,        //     Usage Minimum (0x01)
+    0x29, 0x14,        //     Usage Maximum (0x14)
+    0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x06, 0x00, 0xFF,  //     Usage Page (Vendor Defined 0xFF00)
+    0x75, 0x01,        //     Report Size (1)
+    0x95, 0x04,        //     Report Count (4)
+    0x25, 0x01,        //     Logical Maximum (1)
+    0x45, 0x01,        //     Physical Maximum (1)
+    0x09, 0x01,        //     Usage (0x01)
+    0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              //   End Collection
+    0xA1, 0x02,        //   Collection (Logical)
+    0x75, 0x08,        //     Report Size (8)
+    0x95, 0x07,        //     Report Count (7)
+    0x26, 0xFF, 0x00,  //     Logical Maximum (255)
+    0x46, 0xFF, 0x00,  //     Physical Maximum (255)
+    0x09, 0x02,        //     Usage (0x02)
+    0x91, 0x02,        //     Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0xC0,              //   End Collection
+    0xC0,              // End Collection
+    // 78 bytes
+};
+
+//////////
+// Guncon2 //
+//////////
+
+static const uint8_t guncon2_dev_descriptor[] = {
+    0x12,        // bLength
+    0x01,        // bDescriptorType (Device)
+    0x00, 0x01,  // bcdUSB 2.00
+    0xff,        // bDeviceClass (Use class information in the Interface Descriptors)
+    0x00,        // bDeviceSubClass
+    0x00,        // bDeviceProtocol
+    0x08,        // bMaxPacketSize0 8
+    0x9a, 0x0b,  // idVendor 0x0b9a
+    0x6a, 0x01,  // idProduct 0x016a
+    0x00, 0x01,  // bcdDevice 11.01
+    0x00,        // iManufacturer (String Index)
+    0x00,        // iProduct (String Index)
+    0x00,        // iSerialNumber (String Index)
+    0x01,        // bNumConfigurations 1
+};
+
+static const uint8_t guncon2_config_descriptor[] = {
+    0x09,        // bLength
+    0x02,        // bDescriptorType (Configuration)
+    0x22, 0x00,  // wTotalLength 34
+    0x01,        // bNumInterfaces 1
+    0x01,        // bConfigurationValue
+    0x00,        // iConfiguration (String Index)
+    0x80,        // bmAttributes
+    0x19,        // bMaxPower 100mA
+
+    0x09,        // bLength
+    0x04,        // bDescriptorType (Interface)
+    0x00,        // bInterfaceNumber 0
+    0x00,        // bAlternateSetting
+    0x01,        // bNumEndpoints 1
+    0xff,        // bInterfaceClass
+    0x6a,        // bInterfaceSubClass
+    0x00,        // bInterfaceProtocol
+    0x00,        // iInterface (String Index)
+
+    0x09,        // bLength
+    0x21,        // bDescriptorType (HID)
+    0x11, 0x01,  // bcdHID 1.11
+    0x00,        // bCountryCode
+    0x01,        // bNumDescriptors
+    0x22,        // bDescriptorType[0] (HID)
+    92U, 0x00,  // wDescriptorLength[0] 78
+
+    0x07,        // bLength
+    0x05,        // bDescriptorType (Endpoint)
+    0x81,        // bEndpointAddress (IN/D2H)
+    0x03,        // bmAttributes (Interrupt)
+    0x08, 0x00,  // wMaxPacketSize 8
+    8,        // bInterval 10 (unit depends on device speed)
+};
+
+static const uint8_t guncon2_hid_report_descriptor[] = {
+    0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+      0x09, 0x04,                    // USAGE (Joystick)
+      0xa1, 0x01,                    // COLLECTION (Application)
+      0xa1, 0x02,                    //   COLLECTION (Logical)
+      0x05, 0x09,                    //     USAGE_PAGE (Button)
+      0x25, 0x01,                    //     LOGICAL_MAXIMUM (1)
+      0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+      0x75, 0x01,                    //     REPORT_SIZE (1)
+      0x95, 0x01,                    //     REPORT_COUNT (1)
+      0x81, 0x03,                    //     INPUT (Cnst,Var,Abs)
+      0x19, 0x01,                    //     USAGE_MINIMUM (Button 1)
+      0x29, 0x07,                    //     USAGE_MAXIMUM (Button 7)
+      0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+      0x25, 0x01,                    //     LOGICAL_MAXIMUM (1)
+      0x35, 0x00,                    //     PHYSICAL_MINIMUM (0)
+      0x45, 0x01,                    //     PHYSICAL_MAXIMUM (1)
+      0x95, 0x07,                    //     REPORT_COUNT (7)
+      0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+      0x75, 0x05,                    //     REPORT_SIZE (5)
+      0x95, 0x01,                    //     REPORT_COUNT (1)
+      0x81, 0x03,                    //     INPUT (Cnst,Var,Abs)
+      0x19, 0x08,                    //     USAGE_MINIMUM (Button 8)
+      0x29, 0x0a,                    //     USAGE_MAXIMUM (Button 10)
+      0x75, 0x01,                    //     REPORT_SIZE (1)
+      0x95, 0x03,                    //     REPORT_COUNT (3)
+      0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+      0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
+      0x09, 0x04,                    //     USAGE (Joystick)
+      0x75, 0x10,                    //     REPORT_SIZE (16)
+      0x95, 0x01,                    //     REPORT_COUNT (1)
+      0x09, 0x30,                    //     USAGE (X)
+      0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+      0x26, 0xbc, 0x02,              //     LOGICAL_MAXIMUM (700)
+      0x35, 0x00,                    //     PHYSICAL_MINIMUM (0)
+      0x46, 0xbc, 0x02,              //     PHYSICAL_MAXIMUM (700)
+      0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+      0x09, 0x31,                    //     USAGE (Y)
+      0x26, 0x54, 0x01,              //     LOGICAL_MAXIMUM (340)
+      0x46, 0x54, 0x01,              //     PHYSICAL_MAXIMUM (340)
+      0x95, 0x01,                    //     REPORT_COUNT (1)
+      0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+      0x95, 0x01,                    //   REPORT_COUNT (1)
+      0x81, 0x03,                    //   INPUT (Cnst,Var,Abs)
+      0xc0,                          //     END_COLLECTION
+      0xc0                           // END_COLLECTION
 };
 
 struct dfp_buttons_t
