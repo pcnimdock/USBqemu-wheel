@@ -17,6 +17,7 @@ using ms = std::chrono::milliseconds;
 
 static bool GetEventName(const char *dev_type, int map, int event, const char **name)
 {
+
 	static char buf[256] = {0};
 	if (map < evdev::JOY_STEERING) {
 		snprintf(buf, sizeof(buf), "Button %d", event);

@@ -410,10 +410,10 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
      case WT_GUNCON2:
         buf[0]=data.buttons&0xFF;
         buf[1]=data.buttons/256;
-        buf[2]=data.hat_horz&0xFF; //x
-        buf[3]=data.hat_horz/256;
-        buf[4]=data.hat_vert&0xFF;//y
-        buf[5]=data.hat_vert/256;
+        buf[2]=data.steering&0xFF; //x
+        buf[3]=data.steering/256;
+        buf[4]=data.clutch&0xFF;//y
+        buf[5]=data.clutch/256;
         break;
 
 	default:
@@ -576,6 +576,7 @@ USBDevice *PadDevice::CreateDevice(int port)
 			config_desc_len = sizeof(gtforce_config_descriptor);
 			s->desc.str = gtf_desc_strings;
 		}
+        break;
 		default:
 		break;
 	}

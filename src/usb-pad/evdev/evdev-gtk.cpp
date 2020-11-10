@@ -547,6 +547,25 @@ static bool GetEventName(const char *dev_type, int map, int event, const char **
 	if (!name)
 		return false;
 
+    if(!strcmp(dev_type,Guncon2Device::TypeName()))
+    {
+     if(map<GUNCON2_X)
+     {
+         if (event < key_to_str.size()) {
+             *name = key_to_str[event];
+             return true;
+         }
+         return false;
+     }
+     else
+     {
+         static char axis[256] = {0};
+         snprintf(axis, sizeof(axis), "Axis %d", event);
+         *name = axis;
+         return true;
+     }
+    }
+
     if (map < JOY_STEERING || !strcmp(dev_type, BuzzDevice::TypeName())) {
 		if (event < key_to_str.size()) {
 			*name = key_to_str[event];
@@ -555,10 +574,9 @@ static bool GetEventName(const char *dev_type, int map, int event, const char **
 		return false;
 	}
 
-    //algo de buzz pero no sé exactamente qué
-    //|| !strcmp(dev_type, Guncon2Device::TypeName())
 
-	// assuming that PS2 axes are always mapped to PC axes
+
+    // assuming that PS2 axes are always mapped to PC axes
 	static char axis[256] = {0};
 	snprintf(axis, sizeof(axis), "Axis %d", event);
 	*name = axis;

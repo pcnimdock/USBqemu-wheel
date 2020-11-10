@@ -409,6 +409,23 @@ enum Buzz
 	BUZZ_BLUE,
 };
 
+enum Guncon2
+{
+
+    GUNCON2_A,
+    GUNCON2_B,
+    GUNCON2_RELOAD,
+    GUNCON2_TRIGGER,
+    GUNCON2_UP,
+    GUNCON2_DOWN,
+    GUNCON2_LEFT,
+    GUNCON2_RIGHT,
+    GUNCON2_SELECT,
+    GUNCON2_START,
+    GUNCON2_X,
+    GUNCON2_Y
+};
+
 static const int HATS_8TO4 [] = {PAD_HAT_N, PAD_HAT_E, PAD_HAT_S, PAD_HAT_W};
 
 #define PAD_VID			0x046D

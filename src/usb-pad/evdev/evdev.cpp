@@ -190,7 +190,7 @@ void EvDevPad::SetAxis(const device_data& device, int event_code, int value)
 	{
 		case 0x80 | JOY_STEERING:
 		case ABS_X: mWheelData.steering = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range); break;
-		//case ABS_Y: mWheelData.clutch = NORM(value, 0xFF); break; //no wheel on PS2 has one, afaik
+        case ABS_Y: mWheelData.clutch = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range); break; //for guncon2
 		//case ABS_RX: mWheelData.axis_rx = NORM(event.value, 0xFF); break;
 		case ABS_RY:
 		treat_me_like_ABS_RY:
@@ -585,6 +585,9 @@ int EvDevPad::Open()
 				LoadBuzzMappings(mDevType, mPort, it.id, device.cfg);
 				max_buttons = 20;
 			break;
+        case WT_GUNCON2:
+            LoadGuncon2Mappings(mDevType, mPort, it.id, device.cfg);
+            break;
 			default:
 				LoadMappings(mDevType, mPort, it.id, device.cfg);
 				if (!LoadSetting(mDevType, mPort, APINAME, N_GAIN_ENABLED, b_gain))

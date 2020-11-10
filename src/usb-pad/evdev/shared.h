@@ -86,6 +86,21 @@ static constexpr const char* buzz_map_names[] = {
 	"blue",
 };
 
+static constexpr const char* guncon2_map_names[] = {
+    "A",
+    "B",
+    "RELOAD",
+    "TRIGGER",
+    "UP",
+    "DOWN",
+    "LEFT",
+    "RIGHT",
+    "SELECT",
+    "START",
+    "x",
+    "y"
+};
+
 struct Point { int x; int y; JoystickMap type; };
 
 struct ConfigMapping
@@ -141,8 +156,11 @@ struct device_data
 
 int GtkPadConfigure(int port, const char* dev_type, const char *title, const char *apiname, GtkWindow *parent, ApiCallbacks& apicbs);
 int GtkBuzzConfigure(int port, const char* dev_type, const char *title, const char *apiname, GtkWindow *parent, ApiCallbacks& apicbs);
+int GtkGuncon2Configure(int port, const char* dev_type, const char *title, const char *apiname, GtkWindow *parent, ApiCallbacks& apicbs);
 bool LoadMappings(const char *dev_type, int port, const std::string& joyname, ConfigMapping& cfg);
 bool SaveMappings(const char *dev_type, int port, const std::string& joyname, const ConfigMapping& cfg);
 bool LoadBuzzMappings(const char *dev_type, int port, const std::string& joyname, ConfigMapping& cfg);
 bool SaveBuzzMappings(const char *dev_type, int port, const std::string& joyname, const ConfigMapping& cfg);
+bool LoadGuncon2Mappings(const char *dev_type, int port, const std::string& joyname, ConfigMapping& cfg);
+bool SaveGuncon2Mappings(const char *dev_type, int port, const std::string& joyname, const ConfigMapping& cfg);
 }} //namespace

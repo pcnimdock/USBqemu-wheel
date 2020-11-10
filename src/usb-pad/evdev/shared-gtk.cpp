@@ -100,49 +100,96 @@ bool SaveMappings(const char *dev_type, int port, const std::string& joyname, co
 
 bool LoadBuzzMappings(const char *dev_type, int port, const std::string& joyname, ConfigMapping& cfg)
 {
-	std::stringstream str;
+    std::stringstream str;
 
-	if (joyname.empty())
-		return false;
-buzz_map_names
-	int j = 0;
+    if (joyname.empty())
+        return false;
 
-	cfg.controls.resize(countof(buzz_map_names) * 4);
-	for (auto& i: cfg.controls)
-	{
-		str.str("");
-		str.clear();
-		str << "map_" << buzz_map_names[j % 5] << "_" << (j / 5);
-		const std::string& name = str.str();
-		int32_t var;
-		if (LoadSetting(dev_type, port, joyname, name.c_str(), var))
-			i = var;
-		else
-			i = -1;
-		j++;
-	}
-	return true;
+    int j = 0;
+
+    cfg.controls.resize(countof(buzz_map_names) * 4);
+    for (auto& i: cfg.controls)
+    {
+        str.str("");
+        str.clear();
+        str << "map_" << buzz_map_names[j % 5] << "_" << (j / 5);
+        const std::string& name = str.str();
+        int32_t var;
+        if (LoadSetting(dev_type, port, joyname, name.c_str(), var))
+            i = var;
+        else
+            i = -1;
+        j++;
+    }
+    return true;
 }
 
 bool SaveBuzzMappings(const char *dev_type, int port, const std::string& joyname, const ConfigMapping& cfg)
 {
-	if (joyname.empty())
-		return false;
+    if (joyname.empty())
+        return false;
 
-	RemoveSection(dev_type, port, joyname);
-	std::stringstream str;
+    RemoveSection(dev_type, port, joyname);
+    std::stringstream str;
 
-	const size_t c = countof(buzz_map_names);
-	for (size_t i=0; i < cfg.controls.size(); i++)
-	{
-		str.str("");
-		str.clear();
-		str << "map_" << buzz_map_names[i % c] << "_" << (i / c);
-		const std::string& name = str.str();
-		if (cfg.controls[i] >= 0 && !SaveSetting(dev_type, port, joyname, name.c_str(), static_cast<int32_t>(cfg.controls[i])))
-			return false;
-	}
-	return true;
+    const size_t c = countof(buzz_map_names);
+    for (size_t i=0; i < cfg.controls.size(); i++)
+    {
+        str.str("");
+        str.clear();
+        str << "map_" << buzz_map_names[i % c] << "_" << (i / c);
+        const std::string& name = str.str();
+        if (cfg.controls[i] >= 0 && !SaveSetting(dev_type, port, joyname, name.c_str(), static_cast<int32_t>(cfg.controls[i])))
+            return false;
+    }
+    return true;
+}
+
+bool LoadGuncon2Mappings(const char *dev_type, int port, const std::string& joyname, ConfigMapping& cfg)
+{
+    std::stringstream str;
+
+    if (joyname.empty())
+        return false;
+
+    int j = 0;
+
+    cfg.controls.resize(countof(guncon2_map_names) * 4);
+    for (auto& i: cfg.controls)
+    {
+        str.str("");
+        str.clear();
+        str << "map_" << guncon2_map_names[j % 5] << "_" << (j / 5);
+        const std::string& name = str.str();
+        int32_t var;
+        if (LoadSetting(dev_type, port, joyname, name.c_str(), var))
+            i = var;
+        else
+            i = -1;
+        j++;
+    }
+    return true;
+}
+
+bool SaveGuncon2Mappings(const char *dev_type, int port, const std::string& joyname, const ConfigMapping& cfg)
+{
+    if (joyname.empty())
+        return false;
+
+    RemoveSection(dev_type, port, joyname);
+    std::stringstream str;
+
+    const size_t c = countof(guncon2_map_names);
+    for (size_t i=0; i < cfg.controls.size(); i++)
+    {
+        str.str("");
+        str.clear();
+        str << "map_" << guncon2_map_names[i % c] << "_" << (i / c);
+        const std::string& name = str.str();
+        if (cfg.controls[i] >= 0 && !SaveSetting(dev_type, port, joyname, name.c_str(), static_cast<int32_t>(cfg.controls[i])))
+            return false;
+    }
+    return true;
 }
 
 static void refresh_store(ConfigData *cfg)
@@ -178,7 +225,26 @@ static void refresh_store(ConfigData *cfg)
 					COL_COLUMN_WIDTH, 50,
 					COL_BINDING, i,
 					-1);
-			} else {
+            } else if (!strcmp(cfg->dev_type, Guncon2Device::TypeName()))
+            {
+                std::stringstream ss;
+                ss << (1 + i / countof(guncon2_map_names));
+                ss << " ";
+                ss << guncon2_map_names[i % countof(guncon2_map_names)];
+
+                std::string name = ss.str();
+
+                gtk_list_store_set (cfg->store, &iter,
+                    COL_NAME, it.first.c_str(),
+                    COL_PS2, name.c_str(),
+                    COL_PC, pc_name,
+                    COL_COLUMN_WIDTH, 50,
+                    COL_BINDING, i,
+                    -1);
+            }
+            else {
+
+            {
 				gtk_list_store_set (cfg->store, &iter,
 					COL_NAME, it.first.c_str(),
 					COL_PS2, JoystickMapNames[i],
@@ -283,6 +349,44 @@ static void button_clicked_buzz (GtkComboBox *widget, gpointer data)
 		}
 		gtk_label_set_text (GTK_LABEL (cfg->label), "");
 	}
+}
+
+static void button_clicked_guncon2 (GtkComboBox *widget, gpointer data)
+{
+    int type = reinterpret_cast<uintptr_t> (g_object_get_data (G_OBJECT (widget), JOYTYPE));
+    ConfigData *cfg = (ConfigData *) g_object_get_data (G_OBJECT(widget), CFG);
+
+    if (cfg /*&& type < cfg->mappings.size() && cfg->js_iter != cfg->joysticks.end()*/)
+    {
+        int value, initial = 0;
+        std::string dev_name;
+        bool inverted = false;
+
+        gtk_label_set_text (GTK_LABEL (cfg->label), "Polling for input for 5 seconds...");
+        OSDebugOut("Polling: %s\n", guncon2_map_names[type]);
+
+        // let label change its text
+        while (gtk_events_pending ())
+            gtk_main_iteration_do (FALSE);
+
+        if (cfg->cb->poll(cfg->jsconf, dev_name, false, value, inverted, initial))
+        {
+            auto it = std::find_if(cfg->jsconf.begin(), cfg->jsconf.end(),
+                [&dev_name](MappingPair& i)->bool {
+                    return i.first == dev_name;
+                });
+
+            if (it != cfg->jsconf.end() && type < it->second.controls.size())
+            {
+                OSDebugOut("setting mappings for %s %s_%lu=%d\n", dev_name.c_str(),
+                    buzz_map_names[type % countof(guncon2_map_names)],
+                    type / countof(guncon2_map_names), value);
+                it->second.controls[type] = value;
+                refresh_store(cfg);
+            }
+        }
+        gtk_label_set_text (GTK_LABEL (cfg->label), "");
+    }
 }
 
 // save references to row paths, automatically updated when store changes
@@ -698,204 +802,427 @@ GtkWidget * make_color_icon(uint32_t rgb)
 
 int GtkBuzzConfigure(int port, const char* dev_type, const char *apititle, const char *apiname, GtkWindow *parent, ApiCallbacks& apicbs)
 {
-	GtkWidget *main_hbox, *right_vbox, *left_vbox, *treeview;
-	GtkWidget *button;
+    GtkWidget *main_hbox, *right_vbox, *left_vbox, *treeview;
+    GtkWidget *button;
 
-	int fd;
-	ConfigData cfg;
+    int fd;
+    ConfigData cfg;
 
-	apicbs.populate(cfg.joysticks);
+    apicbs.populate(cfg.joysticks);
 
-	cfg.js_iter = cfg.joysticks.end();
-	cfg.label = gtk_label_new ("");
-	cfg.store = gtk_list_store_new (NUM_COLS,
-		G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT);
-	cfg.cb = &apicbs;
-	cfg.dev_type = dev_type;
+    cfg.js_iter = cfg.joysticks.end();
+    cfg.label = gtk_label_new ("");
+    cfg.store = gtk_list_store_new (NUM_COLS,
+        G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT);
+    cfg.cb = &apicbs;
+    cfg.dev_type = dev_type;
 
-	for (const auto& it: cfg.joysticks) {
-		if ((fd = open(it.path.c_str(), O_RDONLY | O_NONBLOCK)) < 0)
-		{
-			OSDebugOut("Cannot open device: %s\n", it.path.c_str());
-			continue;
-		}
+    for (const auto& it: cfg.joysticks) {
+        if ((fd = open(it.path.c_str(), O_RDONLY | O_NONBLOCK)) < 0)
+        {
+            OSDebugOut("Cannot open device: %s\n", it.path.c_str());
+            continue;
+        }
 
-		ConfigMapping c; c.fd = fd;
-		LoadBuzzMappings (cfg.dev_type, port, it.id, c);
-		cfg.jsconf.push_back(std::make_pair(it.id, c));
-		OSDebugOut("mappings for '%s': %lu\n", it.name.c_str(), c.controls.size());
-	}
+        ConfigMapping c; c.fd = fd;
+        LoadBuzzMappings (cfg.dev_type, port, it.id, c);
+        cfg.jsconf.push_back(std::make_pair(it.id, c));
+        OSDebugOut("mappings for '%s': %lu\n", it.name.c_str(), c.controls.size());
+    }
 
-	refresh_store(&cfg);
+    refresh_store(&cfg);
 
-	// ---------------------------
-	std::string title = "Buzz ";
-	title += apititle;
+    // ---------------------------
+    std::string title = "Buzz ";
+    title += apititle;
 
-	GtkWidget *dlg = gtk_dialog_new_with_buttons (
-		title.c_str(), parent, GTK_DIALOG_MODAL,
-		GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-		GTK_STOCK_OK, GTK_RESPONSE_OK,
-		NULL);
-	gtk_window_set_position (GTK_WINDOW (dlg), GTK_WIN_POS_CENTER);
-	gtk_window_set_resizable (GTK_WINDOW (dlg), TRUE);
-	gtk_window_set_default_size (GTK_WINDOW(dlg), 320, 240);
+    GtkWidget *dlg = gtk_dialog_new_with_buttons (
+        title.c_str(), parent, GTK_DIALOG_MODAL,
+        GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+        GTK_STOCK_OK, GTK_RESPONSE_OK,
+        NULL);
+    gtk_window_set_position (GTK_WINDOW (dlg), GTK_WIN_POS_CENTER);
+    gtk_window_set_resizable (GTK_WINDOW (dlg), TRUE);
+    gtk_window_set_default_size (GTK_WINDOW(dlg), 320, 240);
 
-	// ---------------------------
-	GtkWidget *dlg_area_box = gtk_dialog_get_content_area (GTK_DIALOG (dlg));
+    // ---------------------------
+    GtkWidget *dlg_area_box = gtk_dialog_get_content_area (GTK_DIALOG (dlg));
 
-	main_hbox = gtk_hbox_new (FALSE, 5);
-	gtk_container_add (GTK_CONTAINER(dlg_area_box), main_hbox);
+    main_hbox = gtk_hbox_new (FALSE, 5);
+    gtk_container_add (GTK_CONTAINER(dlg_area_box), main_hbox);
 
-	left_vbox = gtk_vbox_new (FALSE, 5);
-	gtk_box_pack_start (GTK_BOX (main_hbox), left_vbox, TRUE, TRUE, 5);
-	right_vbox = gtk_vbox_new (FALSE, 5);
-	gtk_box_pack_start (GTK_BOX (main_hbox), right_vbox, TRUE, TRUE, 5);
+    left_vbox = gtk_vbox_new (FALSE, 5);
+    gtk_box_pack_start (GTK_BOX (main_hbox), left_vbox, TRUE, TRUE, 5);
+    right_vbox = gtk_vbox_new (FALSE, 5);
+    gtk_box_pack_start (GTK_BOX (main_hbox), right_vbox, TRUE, TRUE, 5);
 
-	// ---------------------------
-	treeview = gtk_tree_view_new ();
-	cfg.treeview = GTK_TREE_VIEW(treeview);
-	auto selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
-	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
+    // ---------------------------
+    treeview = gtk_tree_view_new ();
+    cfg.treeview = GTK_TREE_VIEW(treeview);
+    auto selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
+    gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
-	GtkCellRenderer *render = gtk_cell_renderer_text_new ();
+    GtkCellRenderer *render = gtk_cell_renderer_text_new ();
 
-	gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
-		-1, "Name", render, "text", COL_NAME, "width", COL_COLUMN_WIDTH, NULL);
-	gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
-		-1, "PS2", render, "text", COL_PS2, NULL);
-	gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
-		-1, "PC", render, "text", COL_PC, NULL);
+    gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
+        -1, "Name", render, "text", COL_NAME, "width", COL_COLUMN_WIDTH, NULL);
+    gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
+        -1, "PS2", render, "text", COL_PS2, NULL);
+    gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
+        -1, "PC", render, "text", COL_PC, NULL);
 
-	gtk_tree_view_set_tooltip_column (GTK_TREE_VIEW(treeview), 0);
+    gtk_tree_view_set_tooltip_column (GTK_TREE_VIEW(treeview), 0);
 
-	gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 0), TRUE);
-	gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 1), TRUE);
-	gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 2), TRUE);
+    gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 0), TRUE);
+    gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 1), TRUE);
+    gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 2), TRUE);
 
-	gtk_tree_view_set_model (GTK_TREE_VIEW (treeview), GTK_TREE_MODEL (cfg.store));
-	g_object_unref (GTK_TREE_MODEL (cfg.store)); //treeview has its own ref
+    gtk_tree_view_set_model (GTK_TREE_VIEW (treeview), GTK_TREE_MODEL (cfg.store));
+    g_object_unref (GTK_TREE_MODEL (cfg.store)); //treeview has its own ref
 
-	GtkWidget *scwin = gtk_scrolled_window_new(NULL, NULL);
-	gtk_container_add(GTK_CONTAINER(scwin), treeview);
-	gtk_widget_set_size_request (GTK_WIDGET(scwin), 200, 100);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scwin), GTK_POLICY_AUTOMATIC,
-								   GTK_POLICY_ALWAYS);
-	gtk_box_pack_start (GTK_BOX (left_vbox), scwin, TRUE, TRUE, 5);
+    GtkWidget *scwin = gtk_scrolled_window_new(NULL, NULL);
+    gtk_container_add(GTK_CONTAINER(scwin), treeview);
+    gtk_widget_set_size_request (GTK_WIDGET(scwin), 200, 100);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scwin), GTK_POLICY_AUTOMATIC,
+                                   GTK_POLICY_ALWAYS);
+    gtk_box_pack_start (GTK_BOX (left_vbox), scwin, TRUE, TRUE, 5);
 
-	button = gtk_button_new_with_label ("Clear binding");
-	gtk_box_pack_start (GTK_BOX (left_vbox), button, FALSE, FALSE, 5);
-	g_object_set_data (G_OBJECT (button), CFG, &cfg);
-	g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (clear_binding_clicked), reinterpret_cast<gpointer> (port));
+    button = gtk_button_new_with_label ("Clear binding");
+    gtk_box_pack_start (GTK_BOX (left_vbox), button, FALSE, FALSE, 5);
+    g_object_set_data (G_OBJECT (button), CFG, &cfg);
+    g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (clear_binding_clicked), reinterpret_cast<gpointer> (port));
 
-	button = gtk_button_new_with_label ("Clear All");
-	gtk_box_pack_start (GTK_BOX (left_vbox), button, FALSE, FALSE, 5);
-	g_object_set_data (G_OBJECT (button), CFG, &cfg);
-	g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (clear_all_clicked), reinterpret_cast<gpointer> (port));
+    button = gtk_button_new_with_label ("Clear All");
+    gtk_box_pack_start (GTK_BOX (left_vbox), button, FALSE, FALSE, 5);
+    g_object_set_data (G_OBJECT (button), CFG, &cfg);
+    g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (clear_all_clicked), reinterpret_cast<gpointer> (port));
 
-	// ---------------------------
+    // ---------------------------
 
-	// Remapping
-	{
-		GtkWidget* table = gtk_table_new (5, 4, true);
-		gtk_container_add (GTK_CONTAINER(right_vbox), table);
-		GtkAttachOptions opt = (GtkAttachOptions)(GTK_EXPAND | GTK_FILL); // default
+    // Remapping
+    {
+        GtkWidget* table = gtk_table_new (5, 4, true);
+        gtk_container_add (GTK_CONTAINER(right_vbox), table);
+        GtkAttachOptions opt = (GtkAttachOptions)(GTK_EXPAND | GTK_FILL); // default
 
-		static const char* button_labels[] {
-			"Red",
-			"Blue",
-			"Orange",
-			"Green",
-			"Yellow",
-		};
+        static const char* button_labels[] {
+            "Red",
+            "Blue",
+            "Orange",
+            "Green",
+            "Yellow",
+        };
 
-		static const Buzz buzz_btns[] {
-			BUZZ_RED,
-			BUZZ_BLUE,
-			BUZZ_ORANGE,
-			BUZZ_GREEN,
-			BUZZ_YELLOW,
-		};
+        static const Buzz buzz_btns[] {
+            BUZZ_RED,
+            BUZZ_BLUE,
+            BUZZ_ORANGE,
+            BUZZ_GREEN,
+            BUZZ_YELLOW,
+        };
 
-		static const uint32_t icon_colors[] {
-			0x0000FF,
-			0xFF0000,
-			0x0080FF,
-			0x00FF00,
-			0x00FFFF,
-		};
+        static const uint32_t icon_colors[] {
+            0x0000FF,
+            0xFF0000,
+            0x0080FF,
+            0x00FF00,
+            0x00FFFF,
+        };
 
-		for (int j=0; j < 4; j++) {
-			for (int i=0; i < countof(button_labels); i++)
-			{
-				GtkWidget *button = gtk_button_new_with_label (button_labels[i]);
+        for (int j=0; j < 4; j++) {
+            for (int i=0; i < countof(button_labels); i++)
+            {
+                GtkWidget *button = gtk_button_new_with_label (button_labels[i]);
 
-				GtkWidget *icon = make_color_icon(icon_colors[i]);
-				gtk_button_set_image (GTK_BUTTON(button), icon);
-				gtk_button_set_image_position (GTK_BUTTON(button), GTK_POS_LEFT);
+                GtkWidget *icon = make_color_icon(icon_colors[i]);
+                gtk_button_set_image (GTK_BUTTON(button), icon);
+                gtk_button_set_image_position (GTK_BUTTON(button), GTK_POS_LEFT);
 
-				GList *children = gtk_container_get_children(GTK_CONTAINER(button));
-				//OSDebugOut("widget: %s\n", gtk_widget_get_name(GTK_WIDGET(children->data)));
+                GList *children = gtk_container_get_children(GTK_CONTAINER(button));
+                //OSDebugOut("widget: %s\n", gtk_widget_get_name(GTK_WIDGET(children->data)));
 
-				//Gtk 3.16+
-				//gtk_label_set_xalign (GTK_WIDGET(children), 0.0)
+                //Gtk 3.16+
+                //gtk_label_set_xalign (GTK_WIDGET(children), 0.0)
 
-				//gtk_misc_set_alignment (GTK_MISC (children->data), 0.0, 0.5);
-				if (GTK_IS_ALIGNMENT (children->data))
-					gtk_alignment_set (GTK_ALIGNMENT (children->data), 0.0f, 0.5f, 0.2f, 0.f);
+                //gtk_misc_set_alignment (GTK_MISC (children->data), 0.0, 0.5);
+                if (GTK_IS_ALIGNMENT (children->data))
+                    gtk_alignment_set (GTK_ALIGNMENT (children->data), 0.0f, 0.5f, 0.2f, 0.f);
 
-				g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (button_clicked_buzz), reinterpret_cast<gpointer> (port));
+                g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (button_clicked_buzz), reinterpret_cast<gpointer> (port));
 
-				g_object_set_data (G_OBJECT (button), JOYTYPE, reinterpret_cast<gpointer> (j * countof(buzz_btns) + buzz_btns[i]));
-				g_object_set_data (G_OBJECT (button), CFG, &cfg);
+                g_object_set_data (G_OBJECT (button), JOYTYPE, reinterpret_cast<gpointer> (j * countof(buzz_btns) + buzz_btns[i]));
+                g_object_set_data (G_OBJECT (button), CFG, &cfg);
 
-				gtk_table_attach (GTK_TABLE (table), button,
-						j, 1 + j,
-						i + 1, 2 + i,
-						opt, opt, 5, 1);
-			}
+                gtk_table_attach (GTK_TABLE (table), button,
+                        j, 1 + j,
+                        i + 1, 2 + i,
+                        opt, opt, 5, 1);
+            }
 
-			gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 1"),
-								0, 1, 0, 1, opt, opt, 5, 1);
-			gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 2"),
-								1, 2, 0, 1, opt, opt, 5, 1);
-			gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 3"),
-								2, 3, 0, 1, opt, opt, 5, 1);
-			gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 4"),
-								3, 4, 0, 1, opt, opt, 5, 1);
+            gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 1"),
+                                0, 1, 0, 1, opt, opt, 5, 1);
+            gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 2"),
+                                1, 2, 0, 1, opt, opt, 5, 1);
+            gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 3"),
+                                2, 3, 0, 1, opt, opt, 5, 1);
+            gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 4"),
+                                3, 4, 0, 1, opt, opt, 5, 1);
 
-		}
+        }
 
-		GtkWidget *hbox = gtk_hbox_new (false, 5);
-		gtk_container_add (GTK_CONTAINER (right_vbox), hbox);
+        GtkWidget *hbox = gtk_hbox_new (false, 5);
+        gtk_container_add (GTK_CONTAINER (right_vbox), hbox);
 
-		gtk_box_pack_start (GTK_BOX (right_vbox), cfg.label, TRUE, TRUE, 5);
-	}
+        gtk_box_pack_start (GTK_BOX (right_vbox), cfg.label, TRUE, TRUE, 5);
+    }
 
-	// ---------------------------
-	gtk_widget_show_all (dlg);
-	gint result = gtk_dialog_run (GTK_DIALOG (dlg));
+    // ---------------------------
+    gtk_widget_show_all (dlg);
+    gint result = gtk_dialog_run (GTK_DIALOG (dlg));
 
-	int ret = RESULT_OK;
-	if (result == GTK_RESPONSE_OK)
-	{
-		if (cfg.js_iter != cfg.joysticks.end()) {
-			if (!SaveSetting(dev_type, port, apiname, N_JOYSTICK, cfg.js_iter->path))
-				ret = RESULT_FAILED;
-		}
+    int ret = RESULT_OK;
+    if (result == GTK_RESPONSE_OK)
+    {
+        if (cfg.js_iter != cfg.joysticks.end()) {
+            if (!SaveSetting(dev_type, port, apiname, N_JOYSTICK, cfg.js_iter->path))
+                ret = RESULT_FAILED;
+        }
 
-		for (auto& it: cfg.jsconf)
-			SaveBuzzMappings(dev_type, port, it.first, it.second);
+        for (auto& it: cfg.jsconf)
+            SaveBuzzMappings(dev_type, port, it.first, it.second);
 
-	}
-	else
-		ret = RESULT_CANCELED;
+    }
+    else
+        ret = RESULT_CANCELED;
 
-	for (auto& it: cfg.jsconf)
-		close(it.second.fd);
+    for (auto& it: cfg.jsconf)
+        close(it.second.fd);
 
-	gtk_widget_destroy (dlg);
-	return ret;
+    gtk_widget_destroy (dlg);
+    return ret;
+}
+
+int GtkGuncon2Configure(int port, const char* dev_type, const char *apititle, const char *apiname, GtkWindow *parent, ApiCallbacks& apicbs)
+{
+    GtkWidget *main_hbox, *right_vbox, *left_vbox, *treeview;
+    GtkWidget *button;
+
+    int fd;
+    ConfigData cfg;
+
+    apicbs.populate(cfg.joysticks);
+
+    cfg.js_iter = cfg.joysticks.end();
+    cfg.label = gtk_label_new ("");
+    cfg.store = gtk_list_store_new (NUM_COLS,
+        G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_INT);
+    cfg.cb = &apicbs;
+    cfg.dev_type = dev_type;
+
+    for (const auto& it: cfg.joysticks) {
+        if ((fd = open(it.path.c_str(), O_RDONLY | O_NONBLOCK)) < 0)
+        {
+            OSDebugOut("Cannot open device: %s\n", it.path.c_str());
+            continue;
+        }
+
+        ConfigMapping c; c.fd = fd;
+        LoadBuzzMappings (cfg.dev_type, port, it.id, c);
+        cfg.jsconf.push_back(std::make_pair(it.id, c));
+        OSDebugOut("mappings for '%s': %lu\n", it.name.c_str(), c.controls.size());
+    }
+
+    refresh_store(&cfg);
+
+    // ---------------------------
+    std::string title = "Guncon2 ";
+    title += apititle;
+
+    GtkWidget *dlg = gtk_dialog_new_with_buttons (
+        title.c_str(), parent, GTK_DIALOG_MODAL,
+        GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+        GTK_STOCK_OK, GTK_RESPONSE_OK,
+        NULL);
+    gtk_window_set_position (GTK_WINDOW (dlg), GTK_WIN_POS_CENTER);
+    gtk_window_set_resizable (GTK_WINDOW (dlg), TRUE);
+    gtk_window_set_default_size (GTK_WINDOW(dlg), 320, 240);
+
+    // ---------------------------
+    GtkWidget *dlg_area_box = gtk_dialog_get_content_area (GTK_DIALOG (dlg));
+
+    main_hbox = gtk_hbox_new (FALSE, 5);
+    gtk_container_add (GTK_CONTAINER(dlg_area_box), main_hbox);
+
+    left_vbox = gtk_vbox_new (FALSE, 5);
+    gtk_box_pack_start (GTK_BOX (main_hbox), left_vbox, TRUE, TRUE, 5);
+    right_vbox = gtk_vbox_new (FALSE, 5);
+    gtk_box_pack_start (GTK_BOX (main_hbox), right_vbox, TRUE, TRUE, 5);
+
+    // ---------------------------
+    treeview = gtk_tree_view_new ();
+    cfg.treeview = GTK_TREE_VIEW(treeview);
+    auto selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
+    gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
+
+    GtkCellRenderer *render = gtk_cell_renderer_text_new ();
+
+    gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
+        -1, "Name", render, "text", COL_NAME, "width", COL_COLUMN_WIDTH, NULL);
+    gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
+        -1, "PS2", render, "text", COL_PS2, NULL);
+    gtk_tree_view_insert_column_with_attributes (GTK_TREE_VIEW (treeview),
+        -1, "PC", render, "text", COL_PC, NULL);
+
+    gtk_tree_view_set_tooltip_column (GTK_TREE_VIEW(treeview), 0);
+
+    gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 0), TRUE);
+    gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 1), TRUE);
+    gtk_tree_view_column_set_resizable (gtk_tree_view_get_column(GTK_TREE_VIEW (treeview), 2), TRUE);
+
+    gtk_tree_view_set_model (GTK_TREE_VIEW (treeview), GTK_TREE_MODEL (cfg.store));
+    g_object_unref (GTK_TREE_MODEL (cfg.store)); //treeview has its own ref
+
+    GtkWidget *scwin = gtk_scrolled_window_new(NULL, NULL);
+    gtk_container_add(GTK_CONTAINER(scwin), treeview);
+    gtk_widget_set_size_request (GTK_WIDGET(scwin), 200, 100);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scwin), GTK_POLICY_AUTOMATIC,
+                                   GTK_POLICY_ALWAYS);
+    gtk_box_pack_start (GTK_BOX (left_vbox), scwin, TRUE, TRUE, 5);
+
+    button = gtk_button_new_with_label ("Clear binding");
+    gtk_box_pack_start (GTK_BOX (left_vbox), button, FALSE, FALSE, 5);
+    g_object_set_data (G_OBJECT (button), CFG, &cfg);
+    g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (clear_binding_clicked), reinterpret_cast<gpointer> (port));
+
+    button = gtk_button_new_with_label ("Clear All");
+    gtk_box_pack_start (GTK_BOX (left_vbox), button, FALSE, FALSE, 5);
+    g_object_set_data (G_OBJECT (button), CFG, &cfg);
+    g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (clear_all_clicked), reinterpret_cast<gpointer> (port));
+
+    // ---------------------------
+
+    // Remapping
+    {
+        GtkWidget* table = gtk_table_new (5, 4, true);
+        gtk_container_add (GTK_CONTAINER(right_vbox), table);
+        GtkAttachOptions opt = (GtkAttachOptions)(GTK_EXPAND | GTK_FILL); // default
+
+        static const char* button_labels[] {
+            "A",
+            "B",
+            "RELOAD",
+            "TRIGGER",
+            "UP",
+            "DOWN",
+            "LEFT",
+            "RIGHT",
+            "SELECT",
+            "START",
+            "x",
+            "y",
+        };
+
+        static const Guncon2 guncon2_btns[] {
+            GUNCON2_A,
+            GUNCON2_B,
+            GUNCON2_RELOAD,
+            GUNCON2_TRIGGER,
+            GUNCON2_UP,
+            GUNCON2_DOWN,
+            GUNCON2_LEFT,
+            GUNCON2_RIGHT,
+            GUNCON2_SELECT,
+            GUNCON2_START,
+                    GUNCON2_X,
+                    GUNCON2_Y,
+        };
+
+        static const uint32_t icon_colors[] {
+            0x0000FF,
+            0xFF0000,
+            0x0080FF,
+            0x00FF00,
+            0x0000FF,
+            0xFF0000,
+            0x0080FF,
+            0x00FF00,
+            0x0000FF,
+            0xFF0000,
+            0x0080FF,
+            0x00FF00,
+        };
+
+        for (int j=0; j < 1; j++) {
+            for (int i=0; i < countof(button_labels); i++)
+            {
+                GtkWidget *button = gtk_button_new_with_label (button_labels[i]);
+
+                GtkWidget *icon = make_color_icon(icon_colors[i]);
+                gtk_button_set_image (GTK_BUTTON(button), icon);
+                gtk_button_set_image_position (GTK_BUTTON(button), GTK_POS_LEFT);
+
+                GList *children = gtk_container_get_children(GTK_CONTAINER(button));
+                //OSDebugOut("widget: %s\n", gtk_widget_get_name(GTK_WIDGET(children->data)));
+
+                //Gtk 3.16+
+                //gtk_label_set_xalign (GTK_WIDGET(children), 0.0)
+
+                //gtk_misc_set_alignment (GTK_MISC (children->data), 0.0, 0.5);
+                if (GTK_IS_ALIGNMENT (children->data))
+                    gtk_alignment_set (GTK_ALIGNMENT (children->data), 0.0f, 0.5f, 0.2f, 0.f);
+
+                g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (button_clicked_buzz), reinterpret_cast<gpointer> (port));
+
+                g_object_set_data (G_OBJECT (button), JOYTYPE, reinterpret_cast<gpointer> (j * countof(buzz_btns) + buzz_btns[i]));
+                g_object_set_data (G_OBJECT (button), CFG, &cfg);
+
+                gtk_table_attach (GTK_TABLE (table), button,
+                        j, 1 + j,
+                        i + 1, 2 + i,
+                        opt, opt, 5, 1);
+            }
+
+            gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 1"),
+                                0, 1, 0, 1, opt, opt, 5, 1);
+            //gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 2"),
+            //                    1, 2, 0, 1, opt, opt, 5, 1);
+            //gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 3"),
+            //                    2, 3, 0, 1, opt, opt, 5, 1);
+            //gtk_table_attach (GTK_TABLE (table), gtk_label_new ("Player 4"),
+            //                    3, 4, 0, 1, opt, opt, 5, 1);
+
+        }
+
+        GtkWidget *hbox = gtk_hbox_new (false, 5);
+        gtk_container_add (GTK_CONTAINER (right_vbox), hbox);
+
+        gtk_box_pack_start (GTK_BOX (right_vbox), cfg.label, TRUE, TRUE, 5);
+    }
+
+    // ---------------------------
+    gtk_widget_show_all (dlg);
+    gint result = gtk_dialog_run (GTK_DIALOG (dlg));
+
+    int ret = RESULT_OK;
+    if (result == GTK_RESPONSE_OK)
+    {
+        if (cfg.js_iter != cfg.joysticks.end()) {
+            if (!SaveSetting(dev_type, port, apiname, N_JOYSTICK, cfg.js_iter->path))
+                ret = RESULT_FAILED;
+        }
+
+        for (auto& it: cfg.jsconf)
+            SaveGuncon2Mappings(dev_type, port, it.first, it.second);
+
+    }
+    else
+        ret = RESULT_CANCELED;
+
+    for (auto& it: cfg.jsconf)
+        close(it.second.fd);
+
+    gtk_widget_destroy (dlg);
+    return ret;
 }
 
 }} //namespace
