@@ -256,6 +256,7 @@ static void refresh_store(ConfigData *cfg)
 		}
 	}
 }
+}
 
 static void joystick_changed (GtkComboBox *widget, gpointer data)
 {
@@ -1173,7 +1174,7 @@ int GtkGuncon2Configure(int port, const char* dev_type, const char *apititle, co
 
                 g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (button_clicked_buzz), reinterpret_cast<gpointer> (port));
 
-                g_object_set_data (G_OBJECT (button), JOYTYPE, reinterpret_cast<gpointer> (j * countof(buzz_btns) + buzz_btns[i]));
+                g_object_set_data (G_OBJECT (button), JOYTYPE, reinterpret_cast<gpointer> (j * countof(guncon2_btns) + guncon2_btns[i]));
                 g_object_set_data (G_OBJECT (button), CFG, &cfg);
 
                 gtk_table_attach (GTK_TABLE (table), button,
