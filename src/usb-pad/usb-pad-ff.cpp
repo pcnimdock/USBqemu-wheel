@@ -275,4 +275,21 @@ void Pad::ParseFFData(const ff_data *ffdata, bool isDFP)
 	}
 }
 
+void Pad::Guncon2SetReport(uint8_t *data)
+{
+    std::cerr << "Entrando funcion guncon2 set report" << std::endl;
+ if(mType==WT_GUNCON2)
+ {
+     std::cerr << "Tipo guncon" << std::endl;
+     std::cerr << "offsetx" << data[0] << std::endl;
+     std::cerr << "offsety" << data[1] << std::endl;
+     mGuncon2state.offsetx=(data[0]);
+     mGuncon2state.offsety=data[1];
+ }
+ else {
+     std::cerr << "mType: " << mType << std::endl;
+ }
+ std::cerr << "Saliendo" << std::endl;
+}
+
 } //namespace

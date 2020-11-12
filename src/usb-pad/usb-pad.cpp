@@ -257,7 +257,7 @@ static void pad_handle_control(USBDevice *dev, USBPacket *p, int request, int va
 		break;
 	/* hid specific requests */
 	case SET_REPORT:
-        //en guncon2 aquí se pone la pistola en progressive
+        //en guncon2 aquí se pone la pistola en progressive y los offsets
 
 		// no idea, Rock Band 2 keeps spamming this
         OSDebugOut(TEXT("SET_REPORT 0x%04X\n"), value);
@@ -272,6 +272,12 @@ static void pad_handle_control(USBDevice *dev, USBPacket *p, int request, int va
                 std::cerr << cadena;
             }
             std::cerr << std::endl;
+
+
+            s->pad->Guncon2SetReport(data);
+
+
+
 			/* 0x01: Num Lock LED
 			 * 0x02: Caps Lock LED
 			 * 0x04: Scroll Lock LED
@@ -356,9 +362,6 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
 		uint32_t hi;
 	};
 
-    static uint8_t calibration=0;
-    static uint8_t set_calibration=0;
-    static int32_t valx_buff,valy_buff;
     uint16_t temp_btn=0x1F00;
     int32_t val_transform_x;
     int32_t val_transform_y;
@@ -523,7 +526,7 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
 
         //prueba time crisis 2
         if(val_transform_x!=0)
-        {val_t_int=val_transform_x+71;}
+        {val_t_int=val_transform_x+112-static_cast<int8_t>(data.guncon2_offsetx)/2;}
         else {
             val_t_int=0;
         }
@@ -536,14 +539,15 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
         val_transform_y*=256;
         val_transform_y/=0x3FF;
        // val_transform_y=data.clutch;
-        if(val_transform_y!=0){val_t_int=val_transform_y+27;}
+        if(val_transform_y!=0){val_t_int=val_transform_y+28;}
         else{val_t_int=0;}
 
         buf[4]=val_t_int&0xFF;//y
         buf[5]=val_t_int/256;
 
         char cadena[256];
-        sprintf(cadena,"b0:%d b1:%d x:%d y:%d\n",buf[0],buf[1],val_transform_x,val_transform_y);
+        sprintf(cadena,"offsetx:%d offsety:%d x:%d y:%d\n",static_cast<int8_t>(data.guncon2_offsetx),
+                static_cast<int8_t>(data.guncon2_offsety),val_transform_x,val_transform_y);
         std::cerr << "Guncon2 buff: " << cadena << std::endl;
         break;
 

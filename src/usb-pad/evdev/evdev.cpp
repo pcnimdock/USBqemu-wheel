@@ -186,6 +186,7 @@ void EvDevPad::SetAxis(const device_data& device, int event_code, int value)
 	int code = device.axis_map[event_code] != (uint8_t)-1 ? device.axis_map[event_code] : -1 /* allow axis to be unmapped */; //event_code;
 	//value = AxisCorrect(mAbsCorrect[event_code], value);
 
+
     //prueba
     code=event_code;
     if(code==ABS_X)
@@ -204,8 +205,10 @@ void EvDevPad::SetAxis(const device_data& device, int event_code, int value)
 	{
 		case 0x80 | JOY_STEERING:
         case ABS_X: mWheelData.steering = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range);
+                    mWheelData.guncon2_offsetx=mGuncon2state.offsetx;
         break;
         case ABS_Y: mWheelData.clutch = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range);
+                    mWheelData.guncon2_offsety=mGuncon2state.offsety;
         break; //for guncon2
 		//case ABS_RX: mWheelData.axis_rx = NORM(event.value, 0xFF); break;
 		case ABS_RY:
@@ -274,9 +277,9 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
         if(set_calibracion==2)
         {
 
-            char cadena[256];
-            sprintf(cadena,"Cal Frame %d",num_frames);
-            std::cerr << cadena << std::endl;
+           // char cadena[256];
+           // sprintf(cadena,"Cal Frame %d",num_frames);
+           // std::cerr << cadena << std::endl;
             if(num_frames++>7)
             {
                 if(num_frames<12)
@@ -541,7 +544,14 @@ int EvDevPad::TokenOut(const uint8_t *data, int len)
 	bool hires = (mType == WT_DRIVING_FORCE_PRO || mType == WT_DRIVING_FORCE_PRO_1102);
 	ParseFFData(ffdata, hires);
 
-	return len;
+    return len;
+}
+
+void EvDevPad::guncon2_set_offsets(int16_t offsetx, int16_t offsety)
+{
+    guncon2_offsetx=offsetx;
+    guncon2_offsety=offsety;
+
 }
 
 int EvDevPad::Open()

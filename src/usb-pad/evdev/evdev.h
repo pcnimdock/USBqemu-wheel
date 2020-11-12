@@ -38,6 +38,7 @@ public:
 		return "Evdev";
 	}
 
+    void guncon2_set_offsets(int16_t offsetx, int16_t offsety);
 	static int Configure(int port, const char* dev_type, void *data);
 protected:
 	void PollAxesValues(const device_data& device);
@@ -55,6 +56,8 @@ protected:
     struct wheel_data_t mWheelData_temp {};
     uint8_t set_calibracion=0;
     uint8_t num_frames=0;
+    int16_t guncon2_offsetx;
+    int16_t guncon2_offsety;
 };
 
 template< size_t _Size >

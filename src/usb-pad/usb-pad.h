@@ -183,6 +183,9 @@ struct wheel_data_t
 	int32_t clutch; //no game uses though
 	int32_t throttle;
 	int32_t brake;
+
+    uint8_t guncon2_offsetx;
+    uint8_t guncon2_offsety;
 };
 
 struct spring
@@ -267,6 +270,12 @@ struct ff_state
 	bool deadband;
 };
 
+struct guncon2_state
+{
+    uint8_t offsetx;
+    uint8_t offsety;
+};
+
 struct parsed_ff_data
 {
 	union u
@@ -331,11 +340,13 @@ public:
 	virtual int Port() { return mPort; }
 	virtual void Port(int port) { mPort = port; }
 	void ParseFFData(const ff_data *ffdata, bool isDFP);
+    void Guncon2SetReport(uint8_t * data);
 
 protected:
 	PS2WheelTypes mType = PS2WheelTypes::WT_GENERIC;
 	wheel_data_t mWheelData { };
 	ff_state mFFstate;
+    guncon2_state mGuncon2state;
 	FFDevice *mFFdev = nullptr;
 	int mPort;
 	const char* mDevType;
