@@ -181,9 +181,12 @@ static void pad_handle_data(USBDevice *dev, USBPacket *p)
 		if (devep == 1 && s->pad) {
 			ret = s->pad->TokenIn(data, p->iov.size);
 			if (ret > 0)
-				usb_packet_copy (p, data, MIN(ret, sizeof(data)));
+            {
+                usb_packet_copy (p, data, MIN(ret, sizeof(data)));
+
+            }
 			else
-				p->status = ret;
+            {p->status = ret;}
 		} else {
 			goto fail;
 		}
@@ -220,6 +223,7 @@ static void pad_handle_control(USBDevice *dev, USBPacket *p, int request, int va
 
 	switch(request) {
 	case DeviceRequest | USB_REQ_GET_DESCRIPTOR:
+        OSDebugOut(TEXT("DeviceRequest | USB_REQ_GET_DESCRIPTOR 0x%04X\n"), value);
 		ret = usb_desc_handle_control(dev, p, request, value, index, length, data);
 		if (ret < 0)
 			goto fail;
@@ -253,9 +257,21 @@ static void pad_handle_control(USBDevice *dev, USBPacket *p, int request, int va
 		break;
 	/* hid specific requests */
 	case SET_REPORT:
+        //en guncon2 aquí se pone la pistola en progressive
+
 		// no idea, Rock Band 2 keeps spamming this
+        OSDebugOut(TEXT("SET_REPORT 0x%04X\n"), value);
 		if (length > 0) {
 			OSDebugOut(TEXT("SET_REPORT: 0x%02X \n"), data[0]);
+
+            std::cerr << "SET_REPORT: ";
+                       char cadena[256];
+            for(int i_l=0;i_l<length;i_l++)
+            {
+                sprintf(cadena,"%x",data[i_l]);
+                std::cerr << cadena;
+            }
+            std::cerr << std::endl;
 			/* 0x01: Num Lock LED
 			 * 0x02: Caps Lock LED
 			 * 0x04: Scroll Lock LED
@@ -319,6 +335,19 @@ void pad_reset_data(dfp_data_t *d)
 	d->axis_rz = 0x3F;
 }
 
+
+//posición en el buffer de guncon2
+#define BUTTON_TRIGGER	0x2000
+#define BUTTON_A		0x0008
+#define BUTTON_B		0x0004
+#define BUTTON_C		0x0002
+#define BUTTON_SELECT	0x4000
+#define BUTTON_START	0x8000
+#define DPAD_UP      	0x0010
+#define DPAD_DOWN		0x0040
+#define DPAD_LEFT 		0x0080
+#define DPAD_RIGHT      0x0020
+
 void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
 {
 #if 1
@@ -327,6 +356,13 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
 		uint32_t hi;
 	};
 
+    static uint8_t calibration=0;
+    static uint8_t set_calibration=0;
+    static int32_t valx_buff,valy_buff;
+    uint16_t temp_btn=0x1F00;
+    int32_t val_transform_x;
+    int32_t val_transform_y;
+    int16_t val_t_int;
 	wheel_data_t *w = (wheel_data_t *)buf;
 	memset(w, 0, 8);
 
@@ -408,12 +444,107 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
 		buf[4] = (data.buttons >> 4) & 0x3F; // 10 - 4 = 6 bits
 		break;
      case WT_GUNCON2:
-        buf[0]=data.buttons&0xFF;
-        buf[1]=data.buttons/256;
-        buf[2]=data.steering&0xFF; //x
-        buf[3]=data.steering/256;
-        buf[4]=data.clutch&0xFF;//y
-        buf[5]=data.clutch/256;
+        //transformar los botones para concordancia con buffer de guncon2
+
+
+        //posicion en la configuración del remap
+        //        static const Guncon2 guncon2_btns[] {
+        //            GUNCON2_A,
+        //            GUNCON2_B,
+        //            GUNCON2_RELOAD,
+        //            GUNCON2_TRIGGER,
+        //            GUNCON2_UP,
+        //            GUNCON2_DOWN,
+        //            GUNCON2_LEFT,
+        //            GUNCON2_RIGHT,
+        //            GUNCON2_SELECT,
+        //            GUNCON2_START,
+        //                    GUNCON2_X,
+        //                    GUNCON2_Y,
+        //        };
+
+
+
+        if(data.buttons&(0x01)<<GUNCON2_A)
+        {temp_btn&=~BUTTON_A;}
+        else {temp_btn|=BUTTON_A;}
+
+        if(data.buttons&(0x01)<<GUNCON2_B)
+        {temp_btn&=~BUTTON_B;}
+        else {temp_btn|=BUTTON_B;}
+
+        if(data.buttons&(0x01)<<GUNCON2_RELOAD)
+        {temp_btn&=~BUTTON_C;}
+        else {temp_btn|=BUTTON_C;}
+
+        if(data.buttons&(0x01)<<GUNCON2_TRIGGER)
+        {temp_btn&=~BUTTON_TRIGGER;}
+        else {temp_btn|=BUTTON_TRIGGER;}
+
+        if(data.buttons&(0x01)<<GUNCON2_UP)
+        {temp_btn&=~DPAD_UP;}
+        else {temp_btn|=DPAD_UP;}
+
+        if(data.buttons&(0x01)<<GUNCON2_DOWN)
+        {temp_btn&=~DPAD_DOWN;}
+        else {temp_btn|=DPAD_DOWN;}
+
+        if(data.buttons&(0x01)<<GUNCON2_RIGHT)
+        {temp_btn&=~DPAD_RIGHT;}
+        else {temp_btn|=DPAD_RIGHT;}
+
+        if(data.buttons&(0x01)<<GUNCON2_LEFT)
+        {temp_btn&=~DPAD_LEFT;}
+        else {temp_btn|=DPAD_LEFT;}
+
+        if(data.buttons&(0x01)<<GUNCON2_SELECT)
+        {temp_btn&=~BUTTON_SELECT;}
+        else {temp_btn|=BUTTON_SELECT;}
+
+        if(data.buttons&(0x01)<<GUNCON2_START)
+        {temp_btn&=~BUTTON_START;}
+        else {temp_btn|=BUTTON_START;}
+
+        //convertir al máximo y al mínimo de los valores de x y
+        //en virtua cop namco 640 256
+
+
+
+
+
+        buf[0]=temp_btn&0xFF;
+        buf[1]=temp_btn/256;
+
+        //los valores de entrada son de 0 a 1023
+        val_transform_x=(data.steering);
+        val_transform_x*=640;
+        val_transform_x/=0x3FF;
+        //val_transform_x=data.steering;
+
+        //prueba time crisis 2
+        if(val_transform_x!=0)
+        {val_t_int=val_transform_x+71;}
+        else {
+            val_t_int=0;
+        }
+
+
+        buf[2]=val_t_int&0xFF; //x
+        buf[3]=val_t_int/256;
+
+        val_transform_y=(data.clutch);
+        val_transform_y*=256;
+        val_transform_y/=0x3FF;
+       // val_transform_y=data.clutch;
+        if(val_transform_y!=0){val_t_int=val_transform_y+27;}
+        else{val_t_int=0;}
+
+        buf[4]=val_t_int&0xFF;//y
+        buf[5]=val_t_int/256;
+
+        char cadena[256];
+        sprintf(cadena,"b0:%d b1:%d x:%d y:%d\n",buf[0],buf[1],val_transform_x,val_transform_y);
+        std::cerr << "Guncon2 buff: " << cadena << std::endl;
         break;
 
 	default:

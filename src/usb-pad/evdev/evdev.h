@@ -52,6 +52,9 @@ protected:
 	std::thread mWriterThread;
 	std::atomic<bool> mWriterThreadIsRunning;
 	moodycamel::BlockingReaderWriterQueue<std::array<uint8_t, 8>, 32> mFFData;
+    struct wheel_data_t mWheelData_temp {};
+    uint8_t set_calibracion=0;
+    uint8_t num_frames=0;
 };
 
 template< size_t _Size >

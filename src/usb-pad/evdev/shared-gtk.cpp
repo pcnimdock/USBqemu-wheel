@@ -380,7 +380,7 @@ static void button_clicked_guncon2 (GtkComboBox *widget, gpointer data)
             if (it != cfg->jsconf.end() && type < it->second.controls.size())
             {
                 OSDebugOut("setting mappings for %s %s_%lu=%d\n", dev_name.c_str(),
-                    buzz_map_names[type % countof(guncon2_map_names)],
+                    guncon2_map_names[type % countof(guncon2_map_names)],
                     type / countof(guncon2_map_names), value);
                 it->second.controls[type] = value;
                 refresh_store(cfg);
@@ -1028,7 +1028,7 @@ int GtkGuncon2Configure(int port, const char* dev_type, const char *apititle, co
         }
 
         ConfigMapping c; c.fd = fd;
-        LoadBuzzMappings (cfg.dev_type, port, it.id, c);
+        LoadGuncon2Mappings(cfg.dev_type, port, it.id, c);
         cfg.jsconf.push_back(std::make_pair(it.id, c));
         OSDebugOut("mappings for '%s': %lu\n", it.name.c_str(), c.controls.size());
     }
@@ -1104,7 +1104,8 @@ int GtkGuncon2Configure(int port, const char* dev_type, const char *apititle, co
 
     // Remapping
     {
-        GtkWidget* table = gtk_table_new (5, 4, true);
+        //GtkWidget* table = gtk_table_new (5, 4, true);
+        GtkWidget* table = gtk_table_new (12, 4, true);
         gtk_container_add (GTK_CONTAINER(right_vbox), table);
         GtkAttachOptions opt = (GtkAttachOptions)(GTK_EXPAND | GTK_FILL); // default
 
@@ -1172,7 +1173,7 @@ int GtkGuncon2Configure(int port, const char* dev_type, const char *apititle, co
                 if (GTK_IS_ALIGNMENT (children->data))
                     gtk_alignment_set (GTK_ALIGNMENT (children->data), 0.0f, 0.5f, 0.2f, 0.f);
 
-                g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (button_clicked_buzz), reinterpret_cast<gpointer> (port));
+                g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK (button_clicked_guncon2), reinterpret_cast<gpointer> (port));
 
                 g_object_set_data (G_OBJECT (button), JOYTYPE, reinterpret_cast<gpointer> (j * countof(guncon2_btns) + guncon2_btns[i]));
                 g_object_set_data (G_OBJECT (button), CFG, &cfg);

@@ -734,7 +734,7 @@ int EvDevPad::Configure(int port, const char* dev_type, void *data)
 	if (!strcmp(dev_type, BuzzDevice::TypeName()))
     {ret = GtkBuzzConfigure(port, dev_type, "Evdev Settings", evdev::APINAME, GTK_WINDOW (data), apicbs);}
     else if(!strcmp(dev_type, Guncon2Device::TypeName()))
-    {ret = GtkBuzzConfigure(port, dev_type, "Evdev Settings", evdev::APINAME, GTK_WINDOW (data), apicbs);}
+    {ret = GtkGuncon2Configure(port, dev_type, "Evdev Settings", evdev::APINAME, GTK_WINDOW (data), apicbs);}
     else
     {ret = GtkPadConfigure(port, dev_type, "Evdev Settings", evdev::APINAME, GTK_WINDOW (data), apicbs);}
 	return ret;

@@ -186,11 +186,27 @@ void EvDevPad::SetAxis(const device_data& device, int event_code, int value)
 	int code = device.axis_map[event_code] != (uint8_t)-1 ? device.axis_map[event_code] : -1 /* allow axis to be unmapped */; //event_code;
 	//value = AxisCorrect(mAbsCorrect[event_code], value);
 
+    //prueba
+    code=event_code;
+    if(code==ABS_X)
+    {
+        OSDebugOut("Axis: %d, mapped: 0x%02x, val: %d, corrected: %d\n",
+            event.code, device.axis_map[event.code] & ~0x80, event.value, value);
+       // std::cerr << "ABSX " << std::endl;
+    }
+    if(code==ABS_Y)
+    {
+        OSDebugOut("Axis: %d, mapped: 0x%02x, val: %d, corrected: %d\n",
+            event.code, device.axis_map[event.code] & ~0x80, event.value, value);
+        //std::cerr << "ABSY " << std::endl;
+    }
 	switch (code)
 	{
 		case 0x80 | JOY_STEERING:
-		case ABS_X: mWheelData.steering = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range); break;
-        case ABS_Y: mWheelData.clutch = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range); break; //for guncon2
+        case ABS_X: mWheelData.steering = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range);
+        break;
+        case ABS_Y: mWheelData.clutch = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range);
+        break; //for guncon2
 		//case ABS_RX: mWheelData.axis_rx = NORM(event.value, 0xFF); break;
 		case ABS_RY:
 		treat_me_like_ABS_RY:
@@ -253,6 +269,42 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
 	fd_set fds;
 	int maxfd;
 
+    if(mType==WT_GUNCON2)
+    {
+        if(set_calibracion==2)
+        {
+
+            char cadena[256];
+            sprintf(cadena,"Cal Frame %d",num_frames);
+            std::cerr << cadena << std::endl;
+            if(num_frames++>7)
+            {
+                if(num_frames<12)
+                {
+                mWheelData.steering=0;
+                mWheelData.clutch=0;
+                mWheelData.buttons=mWheelData_temp.buttons;
+                pad_copy_data(mType,buf,mWheelData);
+
+                }
+                else {
+                    mWheelData.steering=mWheelData_temp.steering;
+                    mWheelData.clutch=mWheelData_temp.clutch;
+                    pad_copy_data(mType,buf,mWheelData_temp);
+                    set_calibracion=0;
+                }
+
+            }
+            else
+            {
+                pad_copy_data(mType,buf,mWheelData_temp);
+
+            }
+        return buflen;
+        }
+    }
+
+
 	FD_ZERO(&fds);
 	maxfd = -1;
 
@@ -295,6 +347,7 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
 							OSDebugOut("Axis: %d, mapped: 0x%02x, val: %d, corrected: %d\n",
 								event.code, device.axis_map[event.code] & ~0x80, event.value, value);
 						*/
+                        //std::cerr << "valor analogico" << value << std::endl;
 						SetAxis(device, event.code, value);
 					}
 					break;
@@ -417,8 +470,46 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
 			mWheelData.hatswitch = mWheelData.hat_horz;
 		break;
 	}
+    if(mType==WT_GUNCON2)
+    {
+        mWheelData_temp.steering=mWheelData.steering;
+        mWheelData_temp.clutch=mWheelData.clutch;
+        mWheelData_temp.buttons=mWheelData.buttons;
 
-	pad_copy_data(mType, buf, mWheelData);
+        pad_copy_data(mType, buf, mWheelData);
+        if(set_calibracion==0)
+        {
+            if(mWheelData.buttons&(0x01)<<GUNCON2_A)
+            {
+                if(mWheelData.buttons&(0x01)<<GUNCON2_B)
+                {
+                    if(mWheelData.buttons&(0x01)<<GUNCON2_RELOAD)
+                    {
+                        set_calibracion=1;
+                        std::cerr << "set calibration" << std::endl;
+                    }
+                }
+            }
+        }
+        if(set_calibracion==1)
+        {
+            std::cerr << "Esperando disparo" << std::endl;
+            if(mWheelData.buttons&(0x01)<<GUNCON2_TRIGGER)
+            {
+                set_calibracion=2;
+                std::cerr << "DISPARO" << std::endl;
+                num_frames=0;
+
+            }
+        }
+
+
+    }
+    else
+    {
+    pad_copy_data(mType, buf, mWheelData);
+    }
+
 	return buflen;
 }
 

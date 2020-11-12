@@ -168,7 +168,7 @@ inline int range_max(PS2WheelTypes type)
 		return 0x3FFF;
 	if (type == WT_SEGA_SEAMIC)
 		return 255;
-	return 0x3FF;
+    return 0x3FF;
 }
 
 // hold intermediate wheel data
