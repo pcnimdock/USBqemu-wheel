@@ -2,6 +2,7 @@
 #include "usb-pad.h"
 #include "../qemu-usb/desc.h"
 
+
 namespace usb_pad {
 
 static const USBDescStrings df_desc_strings = {
@@ -33,13 +34,6 @@ static const USBDescStrings rb1_desc_strings = {
 static const USBDescStrings buzz_desc_strings = {
     "",
     "Logitech Buzz(tm) Controller V1",
-    "",
-    "Logitech"
-};
-
-static const USBDescStrings guncon2_desc_strings = {
-    "",
-    "Namco Guncon2(tm) Controller V1",
     "",
     "Logitech"
 };
@@ -77,15 +71,6 @@ const TCHAR* BuzzDevice::LongAPIName(const std::string& name)
     return PadDevice::LongAPIName(name);
 }
 
-std::list<std::string> Guncon2Device::ListAPIs()
-{
-    return PadDevice::ListAPIs();
-}
-
-const TCHAR* Guncon2Device::LongAPIName(const std::string& name)
-{
-    return PadDevice::LongAPIName(name);
-}
 
 #ifdef _DEBUG
 void PrintBits(void * data, int size)
@@ -342,7 +327,8 @@ void pad_reset_data(dfp_data_t *d)
 }
 
 
-//posición en el buffer de guncon2
+
+//GUNCON2 Buttons position on buffer
 #define BUTTON_TRIGGER	0x2000
 #define BUTTON_A		0x0008
 #define BUTTON_B		0x0004
@@ -447,27 +433,10 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
 		buf[4] = (data.buttons >> 4) & 0x3F; // 10 - 4 = 6 bits
 		break;
      case WT_GUNCON2:
-        //transformar los botones para concordancia con buffer de guncon2
 
-
-        //posicion en la configuración del remap
-        //        static const Guncon2 guncon2_btns[] {
-        //            GUNCON2_A,
-        //            GUNCON2_B,
-        //            GUNCON2_RELOAD,
-        //            GUNCON2_TRIGGER,
-        //            GUNCON2_UP,
-        //            GUNCON2_DOWN,
-        //            GUNCON2_LEFT,
-        //            GUNCON2_RIGHT,
-        //            GUNCON2_SELECT,
-        //            GUNCON2_START,
-        //                    GUNCON2_X,
-        //                    GUNCON2_Y,
-        //        };
-
-
-
+        /*GUNCON2_A -> button remaped on plugin
+        BUTTON_A -> Position on guncon2 buf
+        */
         if(data.buttons&(0x01)<<GUNCON2_A)
         {temp_btn&=~BUTTON_A;}
         else {temp_btn|=BUTTON_A;}
@@ -508,27 +477,30 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
         {temp_btn&=~BUTTON_START;}
         else {temp_btn|=BUTTON_START;}
 
-        //convertir al máximo y al mínimo de los valores de x y
-        //en virtua cop namco 640 256
-
-
-
-
-
+        //save buttons buffer
         buf[0]=temp_btn&0xFF;
         buf[1]=temp_btn/256;
 
-        //los valores de entrada son de 0 a 1023
-        val_transform_x=(data.steering);
-        val_transform_x*=640;
-        val_transform_x/=0x3FF;
-        //val_transform_x=data.steering;
+        //Input values are from 0 to 1023
+        //Convert to max and min values x and y
+        //virtua cop namco max_x=640 max_y=256
+        uint16_t screen_size[2];
+        screen_size[0]=640;
+        screen_size[1]=256;
 
-        //prueba time crisis 2
-        if(val_transform_x!=0)
-        {val_t_int=val_transform_x+112-static_cast<int8_t>(data.guncon2_offsetx)/2;}
-        else {
-            val_t_int=0;
+        val_transform_x=(data.steering);
+        val_transform_x*=screen_size[0];
+        val_transform_x/=0x3FF;
+
+        if((val_transform_x!=0)&&(val_transform_x<(screen_size[0]+112)))
+        {
+            val_t_int=val_transform_x; // save value to temp val
+            val_t_int+=+112; //add an offset, needed for center
+            val_t_int-=static_cast<int8_t>(data.guncon2_offsetx)/2; //remove offset added on calibration screen
+        }
+        else
+        {
+            val_t_int=0; //save 0 if it's out screen
         }
 
 
@@ -536,19 +508,19 @@ void pad_copy_data(PS2WheelTypes type, uint8_t *buf, wheel_data_t &data)
         buf[3]=val_t_int/256;
 
         val_transform_y=(data.clutch);
-        val_transform_y*=256;
+        val_transform_y*=screen_size[1];
         val_transform_y/=0x3FF;
-       // val_transform_y=data.clutch;
+
         if(val_transform_y!=0){val_t_int=val_transform_y+28;}
         else{val_t_int=0;}
 
         buf[4]=val_t_int&0xFF;//y
         buf[5]=val_t_int/256;
 
-        char cadena[256];
-        sprintf(cadena,"offsetx:%d offsety:%d x:%d y:%d\n",static_cast<int8_t>(data.guncon2_offsetx),
-                static_cast<int8_t>(data.guncon2_offsety),val_transform_x,val_transform_y);
-        std::cerr << "Guncon2 buff: " << cadena << std::endl;
+       // char cadena[256];
+       // sprintf(cadena,"offsetx:%d offsety:%d x:%d y:%d\n",static_cast<int8_t>(data.guncon2_offsetx),
+       //         static_cast<int8_t>(data.guncon2_offsety),val_transform_x,val_transform_y);
+        //std::cerr << "Guncon2 buff: " << cadena << std::endl;
         break;
 
 	default:
@@ -917,70 +889,4 @@ int BuzzDevice::Freeze(int mode, USBDevice* dev, void* data)
 
 // ---- Guncon2 ----
 
-USBDevice* Guncon2Device::CreateDevice(int port)
-{
-    std::string varApi;
-    LoadSetting(nullptr, port, TypeName(), N_DEVICE_API, varApi);
-    PadProxyBase* proxy = RegisterPad::instance().Proxy(varApi);
-    if (!proxy)
-    {
-        SysMessage(TEXT("Guncon2: Invalid input API.\n"));
-        USB_LOG("usb-pad: %s: Invalid input API.\n", TypeName());
-        return NULL;
-    }
-
-    USB_LOG("usb-pad: creating device '%s' on port %d with %s\n", TypeName(), port, varApi.c_str());
-    Pad* pad = proxy->CreateObject(port, TypeName());
-
-    if (!pad)
-        return NULL;
-
-    pad->Type(WT_GUNCON2);
-    PADState* s = new PADState();
-
-    s->desc.full = &s->desc_dev;
-    s->desc.str = guncon2_desc_strings;
-
-    if (usb_desc_parse_dev(guncon2_dev_descriptor, sizeof(guncon2_dev_descriptor), s->desc, s->desc_dev) < 0)
-        goto fail;
-    if (usb_desc_parse_config(guncon2_config_descriptor, sizeof(guncon2_config_descriptor), s->desc_dev) < 0)
-        goto fail;
-
-    s->f.wheel_type = pad->Type();
-    s->pad = pad;
-    s->port = port;
-    s->dev.speed = USB_SPEED_FULL;
-    s->dev.klass.handle_attach = usb_desc_attach;
-    s->dev.klass.handle_reset = pad_handle_reset;
-    s->dev.klass.handle_control = pad_handle_control;
-    s->dev.klass.handle_data = pad_handle_data;
-    s->dev.klass.unrealize = pad_handle_destroy;
-    s->dev.klass.open = pad_open;
-    s->dev.klass.close = pad_close;
-    s->dev.klass.usb_desc = &s->desc;
-    s->dev.klass.product_desc = s->desc.str[2];
-
-    usb_desc_init(&s->dev);
-    usb_ep_init(&s->dev);
-    pad_handle_reset((USBDevice*)s);
-
-    return (USBDevice*)s;
-
-fail:
-    pad_handle_destroy((USBDevice*)s);
-    return nullptr;
-}
-
-int Guncon2Device::Configure(int port, const std::string& api, void* data)
-{
-    auto proxy = RegisterPad::instance().Proxy(api);
-    if (proxy)
-        return proxy->Configure(port, TypeName(), data);
-    return RESULT_CANCELED;
-}
-
-int Guncon2Device::Freeze(int mode, USBDevice* dev, void* data)
-{
-    return PadDevice::Freeze(mode, dev, data);
-}
 } //namespace

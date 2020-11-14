@@ -241,6 +241,7 @@ typedef struct SeamicState {
 	} f;
 } SeamicState;
 
+
 static void pad_handle_data(USBDevice *dev, USBPacket *p)
 {
 	SeamicState *s = (SeamicState *)dev;

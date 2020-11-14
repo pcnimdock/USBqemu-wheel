@@ -188,7 +188,13 @@ void EvDevPad::SetAxis(const device_data& device, int event_code, int value)
 
 
     //prueba
-    code=event_code;
+    if(mType ==WT_GUNCON2)
+    {
+        //force event code with
+        //It is difficult to remap axis with a Gun on configure screen
+        code=event_code;
+    }
+
     if(code==ABS_X)
     {
         OSDebugOut("Axis: %d, mapped: 0x%02x, val: %d, corrected: %d\n",
@@ -205,10 +211,10 @@ void EvDevPad::SetAxis(const device_data& device, int event_code, int value)
 	{
 		case 0x80 | JOY_STEERING:
         case ABS_X: mWheelData.steering = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range);
-                    mWheelData.guncon2_offsetx=mGuncon2state.offsetx;
+                    if(mType==WT_GUNCON2){mWheelData.guncon2_offsetx=mGuncon2state.offsetx;} //save on memory offset setted on set_report
         break;
         case ABS_Y: mWheelData.clutch = device.cfg.inverted[0] ? range - NORM(value, range) : NORM(value, range);
-                    mWheelData.guncon2_offsety=mGuncon2state.offsety;
+                    if(mType==WT_GUNCON2){mWheelData.guncon2_offsety=mGuncon2state.offsety;}//save on memory offset setted on set_report
         break; //for guncon2
 		//case ABS_RX: mWheelData.axis_rx = NORM(event.value, 0xFF); break;
 		case ABS_RY:
@@ -274,12 +280,10 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
 
     if(mType==WT_GUNCON2)
     {
+        //Calibration hack
         if(set_calibracion==2)
         {
 
-           // char cadena[256];
-           // sprintf(cadena,"Cal Frame %d",num_frames);
-           // std::cerr << cadena << std::endl;
             if(num_frames++>7)
             {
                 if(num_frames<12)
@@ -482,9 +486,9 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
         pad_copy_data(mType, buf, mWheelData);
         if(set_calibracion==0)
         {
-            if(mWheelData.buttons&(0x01)<<GUNCON2_A)
+            if(mWheelData.buttons&(0x01)<<GUNCON2_SELECT)
             {
-                if(mWheelData.buttons&(0x01)<<GUNCON2_B)
+                if(mWheelData.buttons&(0x01)<<GUNCON2_UP)
                 {
                     if(mWheelData.buttons&(0x01)<<GUNCON2_RELOAD)
                     {
@@ -496,11 +500,11 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
         }
         if(set_calibracion==1)
         {
-            std::cerr << "Esperando disparo" << std::endl;
+            std::cerr << "Waiting shoot" << std::endl;
             if(mWheelData.buttons&(0x01)<<GUNCON2_TRIGGER)
             {
                 set_calibracion=2;
-                std::cerr << "DISPARO" << std::endl;
+                std::cerr << "SHOOT" << std::endl;
                 num_frames=0;
 
             }
@@ -545,13 +549,6 @@ int EvDevPad::TokenOut(const uint8_t *data, int len)
 	ParseFFData(ffdata, hires);
 
     return len;
-}
-
-void EvDevPad::guncon2_set_offsets(int16_t offsetx, int16_t offsety)
-{
-    guncon2_offsetx=offsetx;
-    guncon2_offsety=offsety;
-
 }
 
 int EvDevPad::Open()

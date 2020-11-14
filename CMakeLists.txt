@@ -207,6 +207,7 @@ SET(SRCS_PAD
 	./src/usb-pad/usb-pad-ff.cpp
 	./src/usb-pad/lg/lg_ff.cpp
 	./src/usb-pad/usb-seamic.cpp
+        ./src/usb-pad/guncon2.cpp
 )
 
 SET(HDRS_MIC
