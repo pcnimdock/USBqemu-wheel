@@ -360,21 +360,41 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
 					break;
 					case EV_KEY:
 					{
+                    char cadena[256];
+                    sprintf(cadena,"evdev guncon2 antes de map: code: %d, map: %08x\n", event.code, device.btn_map[event.code]);
+
 						code = device.btn_map[event.code] != (uint16_t)-1 ? device.btn_map[event.code] : event.code;
 						OSDebugOut("%s Button: 0x%02x, mapped: 0x%02x, val: %d\n",
 							device.name.c_str(), event.code, device.btn_map[event.code], event.value);
 
-						if (mType == WT_BUZZ_CONTROLLER) {
-							OSDebugOut("evdev buzz: code: %d, map: %08x\n", event.code, device.btn_map[event.code]);
-							if (device.btn_map[event.code] != (uint16_t)-1) {
-								if (event.value)
-									mWheelData.buttons |= 1 << (code & ~0x8000); //on
-								else
-									mWheelData.buttons &= ~(1 << (code & ~0x8000)); //off
-							}
+                        sprintf(cadena,"%s Button: 0x%02x, mapped: 0x%02x, val: %d\n",
+                                device.name.c_str(), event.code, device.btn_map[event.code], event.value);
 
-							break;
-						}
+                        if (mType == WT_BUZZ_CONTROLLER) {
+                            OSDebugOut("evdev buzz: code: %d, map: %08x\n", event.code, device.btn_map[event.code]);
+                            if (device.btn_map[event.code] != (uint16_t)-1) {
+                                if (event.value)
+                                    mWheelData.buttons |= 1 << (code & ~0x8000); //on
+                                else
+                                    mWheelData.buttons &= ~(1 << (code & ~0x8000)); //off
+                            }
+
+                            break;
+                        }
+                        if (mType == WT_GUNCON2) {
+                            OSDebugOut("evdev guncon2: code: %d, map: %08x\n", event.code, device.btn_map[event.code]);
+
+                            sprintf(cadena,"evdev guncon2: code: %d, map: %08x\n", event.code, device.btn_map[event.code]);
+                            std::cerr << cadena << std::endl;
+                            if (device.btn_map[event.code] != (uint16_t)-1) {
+                                if (event.value)
+                                    mWheelData.buttons |= 1 << (code & ~0x8000); //on
+                                else
+                                    mWheelData.buttons &= ~(1 << (code & ~0x8000)); //off
+                            }
+
+                            break;
+                        }
 
 						PS2Buttons button = PAD_BUTTON_COUNT;
 						if (code >= (0x8000 | JOY_CROSS) && // user mapped
@@ -424,6 +444,7 @@ int EvDevPad::TokenIn(uint8_t *buf, int buflen)
 
 						//if (button != PAD_BUTTON_COUNT)
 						{
+                            std::cerr << event.value << std::endl;
 							if (event.value)
 								mWheelData.buttons |= 1 << convert_wt_btn(mType, button); //on
 							else
@@ -685,6 +706,7 @@ int EvDevPad::Open()
 			break;
         case WT_GUNCON2:
             LoadGuncon2Mappings(mDevType, mPort, it.id, device.cfg);
+            max_buttons = 20;
             break;
 			default:
 				LoadMappings(mDevType, mPort, it.id, device.cfg);
@@ -754,16 +776,23 @@ int EvDevPad::Open()
 		for (int i = BTN_JOYSTICK; i < KEY_MAX; ++i) {
 			if (test_bit(i, keybit)) {
 				//OSDebugOut("Device has button: 0x%x\n", i);
-				device.btn_map[i] = -1;//device.buttons;
+                char cadena[256];
+                sprintf(cadena,"Device has button: 0x%x\n", i);
+                std::cerr << cadena << std::endl;
+                device.btn_map[i] = -1;//device.buttons;
 				if (i == BTN_GAMEPAD) {
 					device.is_gamepad = true;
 					OSDebugOut("Device is a gamepad\n");
+                    sprintf(cadena,"Device is a gamepad\n");
+                    std::cerr << cadena << std::endl;
 				}
 				for (int k = 0; k < max_buttons; k++) {
 					if (i == device.cfg.controls[k]) {
 						has_mappings = true;
 						device.btn_map[i] = 0x8000 | k;
 						OSDebugOut("Remap button: 0x%x -> %s\n", i, JoystickMapNames[k]);
+                        sprintf(cadena,"Remap button: 0x%x -> %s\n", i, guncon2_map_names[k]);
+                        std::cerr << cadena << std::endl;
 					}
 				}
 			}

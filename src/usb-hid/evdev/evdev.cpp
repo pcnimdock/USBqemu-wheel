@@ -188,7 +188,9 @@ void EvDev::ReaderThread(void *ptr)
 					case EV_KEY:
 					{
 						OSDebugOut("EV_KEY: 0x%02x (%d), val: %d\n", event.code, event.code, event.value);
-
+                        char cadena[256];
+                        sprintf(cadena,"EV_KEY: 0x%02x (%d), val: %d\n", event.code, event.code, event.value);
+                        std::cerr << cadena << std::endl;
 #ifdef USING_X11 //FIXME not thread-safe
 						if (event.code == KEY_LEFTSHIFT || event.code == KEY_RIGHTSHIFT)
 							shift = (event.value > 0);

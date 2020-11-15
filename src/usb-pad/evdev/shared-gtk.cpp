@@ -149,42 +149,43 @@ bool LoadGuncon2Mappings(const char *dev_type, int port, const std::string& joyn
 {
     std::stringstream str;
 
+
+
     if (joyname.empty())
         return false;
 
     int j = 0;
-
-    cfg.controls.resize(countof(guncon2_map_names) * 4);
+    cfg.controls.resize(10);
     for (auto& i: cfg.controls)
     {
-        str.str("");
         str.clear();
-        str << "map_" << guncon2_map_names[j % 5] << "_" << (j / 5);
+        str.str("");
+        str << "map_" << guncon2_map_names[j++];
         const std::string& name = str.str();
         int32_t var;
         if (LoadSetting(dev_type, port, joyname, name.c_str(), var))
             i = var;
         else
             i = -1;
-        j++;
     }
+
     return true;
 }
 
 bool SaveGuncon2Mappings(const char *dev_type, int port, const std::string& joyname, const ConfigMapping& cfg)
 {
-    if (joyname.empty())
+
+     const size_t c = 10;
+    if (joyname.empty() || cfg.controls.size() != c)
         return false;
 
     RemoveSection(dev_type, port, joyname);
     std::stringstream str;
-
-    const size_t c = countof(guncon2_map_names);
-    for (size_t i=0; i < cfg.controls.size(); i++)
+    for (int i=0; i<c; i++)
     {
-        str.str("");
         str.clear();
-        str << "map_" << guncon2_map_names[i % c] << "_" << (i / c);
+        str.str("");
+        str << "map_" << guncon2_map_names[i];
         const std::string& name = str.str();
         if (cfg.controls[i] >= 0 && !SaveSetting(dev_type, port, joyname, name.c_str(), static_cast<int32_t>(cfg.controls[i])))
             return false;
